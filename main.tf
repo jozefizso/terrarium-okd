@@ -28,11 +28,22 @@ provider "esxi" {
 # Template for initial configuration bash script
 #    template_file is a great way to pass variables to
 #    cloud-init
-data "template_file" "Default" {
+data "template_file" "cloudinit_template" {
   template = "${file("userdata.tmpl")}"
   vars = {
     HOSTNAME = "okd-master"
     HELLO    = "Hello World!"
+  }
+}
+
+data "template_cloudinit_config" "config" {
+  gzip          = true
+  base64_encode = true
+
+  part {
+    filename     = "userdata.cfg"
+    content_type = "text/cloud-config"
+    content      = "${data.template_file.cloudinit_template.rendered}"
   }
 }
 
@@ -62,6 +73,6 @@ resource "esxi_guest" "okd-master" {
   #  vmtoolsd --cmd "info-get guestinfo.userdata"
   guestinfo = {
     userdata.encoding = "gzip+base64"
-    userdata = "${base64gzip(data.template_file.Default.rendered)}"
+    userdata = "${data.template_cloudinit_config.config.rendered}"
   }
 }
